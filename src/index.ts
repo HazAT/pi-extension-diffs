@@ -290,11 +290,12 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      const [stagedResult, unstagedResult, untrackedResult] =
+      const [stagedResult, unstagedResult, untrackedResult, branchResult] =
         await Promise.all([
           pi.exec("git", ["diff", "--cached"]),
           pi.exec("git", ["diff"]),
           pi.exec("git", ["ls-files", "--others", "--exclude-standard"]),
+          pi.exec("git", ["branch", "--show-current"]),
         ]);
 
       const staged = stagedResult.stdout || "";
@@ -302,8 +303,64 @@ export default function (pi: ExtensionAPI) {
       const untrackedPaths = untrackedResult.stdout
         .split("\n")
         .filter((p) => p.trim());
+      const branch = branchResult.stdout.trim();
 
-      if (!staged && !unstaged && untrackedPaths.length === 0) {
+      // Gather commits (up to 5)
+      const isMain = branch === "main" || branch === "master";
+      let commitLogResult;
+      if (isMain) {
+        commitLogResult = await pi.exec("git", [
+          "log",
+          "HEAD",
+          "--max-count=5",
+          '--format=%h|%s|%ar',
+        ]);
+      } else {
+        commitLogResult = await pi.exec("git", [
+          "log",
+          "main..HEAD",
+          "--max-count=5",
+          '--format=%h|%s|%ar',
+        ]);
+        if (commitLogResult.code !== 0) {
+          commitLogResult = await pi.exec("git", [
+            "log",
+            "master..HEAD",
+            "--max-count=5",
+            '--format=%h|%s|%ar',
+          ]);
+        }
+        if (commitLogResult.code !== 0) {
+          commitLogResult = await pi.exec("git", [
+            "log",
+            "HEAD",
+            "--max-count=5",
+            '--format=%h|%s|%ar',
+          ]);
+        }
+      }
+
+      const commitLines = (commitLogResult.stdout || "")
+        .split("\n")
+        .filter((l) => l.trim());
+
+      const commits: { hash: string; message: string; time: string; diff: string }[] = [];
+      for (const line of commitLines) {
+        const parts = line.split("|");
+        const hash = parts[0] ?? "";
+        const time = parts[parts.length - 1] ?? "";
+        const message = parts.slice(1, parts.length - 1).join("|");
+        if (!hash) continue;
+        const diffResult = await pi.exec("git", [
+          "show",
+          hash,
+          "--format=",
+          "--patch",
+        ]);
+        commits.push({ hash, message, time, diff: diffResult.stdout || "" });
+      }
+
+      if (!staged && !unstaged && untrackedPaths.length === 0 && commits.length === 0) {
         ctx.ui.notify("No changes", "info");
         return;
       }
@@ -319,7 +376,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       const repoName = basename(ctx.cwd);
-      const data = { staged, unstaged, untracked, repoName };
+      const data = { staged, unstaged, untracked, repoName, branch, commits };
       const dataJSON = JSON.stringify(data);
 
       // Open window if needed
