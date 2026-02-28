@@ -415,21 +415,26 @@ export default function (pi: ExtensionAPI) {
         .split("\n")
         .filter((l) => l.trim());
 
-      const commits: { hash: string; message: string; time: string; diff: string }[] = [];
-      for (const line of commitLines) {
-        const parts = line.split("|");
-        const hash = parts[0] ?? "";
-        const time = parts[parts.length - 1] ?? "";
-        const message = parts.slice(1, parts.length - 1).join("|");
-        if (!hash) continue;
-        const diffResult = await pi.exec("git", [
-          "show",
-          hash,
-          "--format=",
-          "--patch",
-        ]);
-        commits.push({ hash, message, time, diff: diffResult.stdout || "" });
-      }
+      const parsedCommits = commitLines
+        .map((line) => {
+          const parts = line.split("|");
+          const hash = parts[0] ?? "";
+          const time = parts[parts.length - 1] ?? "";
+          const message = parts.slice(1, parts.length - 1).join("|");
+          return { hash, message, time };
+        })
+        .filter((c) => c.hash);
+
+      const commitDiffs = await Promise.all(
+        parsedCommits.map((c) =>
+          pi.exec("git", ["show", c.hash, "--format=", "--patch"])
+        )
+      );
+
+      const commits = parsedCommits.map((c, i) => ({
+        ...c,
+        diff: commitDiffs[i].stdout || "",
+      }));
 
       if (!staged && !unstaged && untrackedPaths.length === 0 && commits.length === 0) {
         ctx.ui.notify("No changes", "info");

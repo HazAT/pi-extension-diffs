@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { PatchDiff, MultiFileDiff } from "@pierre/diffs/react";
 import type { FileDiffOptions } from "@pierre/diffs/react";
@@ -382,6 +382,16 @@ function App({ data }: { data: DiffData }) {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Validate selectedCommitId when data changes (e.g. after rebase, amend)
+  useEffect(() => {
+    if (selectedCommitId === "working") return;
+    const stillExists = data.commits.some((c) => c.hash === selectedCommitId);
+    if (!stillExists) {
+      const newDefault = hasWorkingChanges(data) ? "working" : (data.commits[0]?.hash ?? "working");
+      setSelectedCommitId(newDefault);
+    }
+  }, [data]);
+
   // Files for current selection
   const files = useMemo(() => {
     if (selectedCommitId === "working") return buildWorkingEntries(data);
@@ -402,7 +412,7 @@ function App({ data }: { data: DiffData }) {
       setOpenTabs([]);
       setActiveId(null);
     }
-  }, [selectedCommitId]);
+  }, [selectedCommitId, files]);
 
   // When data updates (same commit), clean up tabs that no longer exist
   useEffect(() => {
