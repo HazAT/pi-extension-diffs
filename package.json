@@ -4,11 +4,12 @@
   "description": "Pi extension — /diffs command to view git changes in a native window",
   "type": "module",
   "scripts": {
-    "build": "bun build src/viewer.tsx --bundle --minify --outfile dist/viewer.js --define 'process.env.NODE_ENV=\"production\"'"
+    "build": "bun build src/viewer.tsx --bundle --minify --outfile dist/viewer.js --define 'process.env.NODE_ENV=\"production\"'",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@pierre/diffs": "^1.0.11",
-    "glimpseui": "file:../glimpse",
+    "glimpseui": "^0.3.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
@@ -17,5 +18,16 @@
       "./src/index.ts"
     ]
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HazAT/pi-extension-diffs.git"
+  },
+  "keywords": [
+    "pi",
+    "extension",
+    "git",
+    "diffs",
+    "macos"
+  ]
 }

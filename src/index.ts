@@ -7,14 +7,9 @@ const baseDir = dirname(fileURLToPath(import.meta.url));
 const distDir = join(baseDir, "..", "dist");
 const viewerPath = join(distDir, "viewer.js");
 const shellPath = join(distDir, "shell.html");
-const glimpsePath = join(
-  baseDir,
-  "..",
-  "node_modules",
-  "glimpseui",
-  "src",
-  "glimpse.mjs"
-);
+
+// Resolve glimpseui from node_modules — dynamic import to avoid jiti issues
+const glimpsePath = join(baseDir, "..", "node_modules", "glimpseui", "src", "glimpse.mjs");
 
 let win: any = null;
 let openFn: any = null;
@@ -333,7 +328,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       if (!existsSync(viewerPath)) {
         ctx.ui.notify(
-          "Viewer not built. Run: cd ~/Projects/pi-extension-diffs && npm run build",
+          "Viewer not built. Run 'npm run build' in the pi-extension-diffs package directory.",
           "error"
         );
         return;

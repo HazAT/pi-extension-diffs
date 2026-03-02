@@ -475,7 +475,6 @@ function App({ data }: { data: DiffData }) {
       {/* Sidebar */}
       <div className="sidebar">
         <div className="sidebar-header">
-          <span className="sidebar-repo">{data.repoName}</span>
           {data.branch && (
             <span className="sidebar-branch">{data.branch}</span>
           )}
